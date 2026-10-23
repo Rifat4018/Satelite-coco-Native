@@ -239,11 +239,16 @@ Key metrics in `eval_test.json`: COCO AP, AP50, AP75, AP/AR per size bucket and 
 
 ## 9. Datasets
 
-| Dataset | Use | Notes |
+| Dataset | Use | Link |
 |---|---|---|
-| Satellite dataset (this study) | main | 544 Google Earth frames, 18,872 boxes (plane, ship, vehicle). Images follow Google Earth terms of use. |
-| SkySeaLand | second dataset | Public Google Earth dataset (airplane, boat, car, ship → mapped to 3 classes); CC BY 4.0 |
-| DOTA-v1.0 | zero-shot external test | 300 validation images; oriented boxes converted to axis-aligned boxes |
+| Dataset version | Purpose | Link |
+|---|---|---|
+| Satellite dataset (this study), 640 px COCO export | Main experiments | [Roboflow Dataset v2](https://app.roboflow.com/rifat4018/aerial-object-detection-u3f5u/2) |
+| Satellite dataset (this study), native resolution | Native-frame experiments (07J–07L) | [Roboflow Dataset v3](https://app.roboflow.com/rifat4018/aerial-object-detection-u3f5u/3) |
+| **SkySeaLand** (airplane, boat, car, ship → plane, ship, vehicle; CC BY 4.0) | second dataset | Mendeley Data: https://data.mendeley.com/datasets/d42n3cp86p/3 · Roboflow Universe: `aquantic-research/skysealand-tf38k` |
+| **DOTA-v1.0** (oriented boxes → axis-aligned) | zero-shot external test (300 val images) | https://captain-whu.github.io/DOTA/ |
+
+The satellite dataset contains 544 Google Earth frames with 18,872 boxes (plane, ship, vehicle). Google Earth imagery is subject to Google's terms of use.
 
 ---
 
@@ -260,6 +265,8 @@ pip install -r requirements.txt
 
 ## 11. Citation and licence
 
-If you use this code, please cite the accompanying paper (citation will be added after publication).
+Code: https://github.com/Rifat4018/Satelite-coco-Native
+
+If you use this code or dataset, please cite the accompanying paper (citation will be added after publication).
 
 Code: add your licence here (e.g. MIT). Google Earth imagery is subject to Google's terms of use and is not redistributed here.
