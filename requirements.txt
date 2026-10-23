@@ -1,0 +1,8 @@
+ultralytics==8.4.37
+sahi
+pycocotools
+opencv-python-headless
+scipy
+pandas
+matplotlib
+roboflow  # notebook 00 only
