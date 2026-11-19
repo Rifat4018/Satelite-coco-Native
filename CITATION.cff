@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper below."
+title: "Benchmarking Sliced Inference for Small-Object Detection in Satellite Images"
+type: software
+repository-code: "https://github.com/Rifat4018/Satelite-coco-Native"
+license: MIT
+identifiers:
+  - {type: doi, value: 10.5281/zenodo.24294928, description: "Dataset (Zenodo)"}
+authors:
+  - {family-names: Rifat, given-names: Mohammad Rakibul Hasan}
+  - {family-names: Ghosh, given-names: Abhijit Kumar}
+  - {family-names: Mamun, given-names: Md. Sabbir Hosen}
+  - {family-names: Lamia, given-names: Sumaiya Tabassum}
+  - {family-names: Islam, given-names: Anika}
+  - {family-names: Quader, given-names: Mozdaher Abdul}
+  - {family-names: Ayrin, given-names: Fateha Jannat}
+  - {family-names: Rahman, given-names: Md Mizanur}
+  - {family-names: Nasir, given-names: Nazib Abdun}
+  - {family-names: Reza, given-names: Md Tanzim}
+preferred-citation:
+  type: conference-paper
+  title: "Benchmarking Sliced Inference for Small-Object Detection in Satellite Images"
+  collection-title: "ICREST 2027"
+  year: 2027
+  authors:
+    - {family-names: Rifat, given-names: Mohammad Rakibul Hasan}
+    - {family-names: Ghosh, given-names: Abhijit Kumar}
+    - {family-names: Mamun, given-names: Md. Sabbir Hosen}
+    - {family-names: Lamia, given-names: Sumaiya Tabassum}
+    - {family-names: Islam, given-names: Anika}
+    - {family-names: Quader, given-names: Mozdaher Abdul}
+    - {family-names: Ayrin, given-names: Fateha Jannat}
+    - {family-names: Rahman, given-names: Md Mizanur}
+    - {family-names: Nasir, given-names: Nazib Abdun}
+    - {family-names: Reza, given-names: Md Tanzim}

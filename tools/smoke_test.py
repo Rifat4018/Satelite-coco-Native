@@ -157,6 +157,37 @@ def main():
     reset_work()
     out12 = run_nb("12-all-paper-results-04-plus-09.ipynb")
     assert "T13_ensembles_grouped" in out12 and "MISSING: none" in out12, out12[-1500:]
+    # ---- 14: blinded audit (sheets -> fake annotators -> agreement, per-mode table, corrected labels, re-score)
+    reset_work()
+    out = run_nb("14A-blinded-audit-build-sheets.ipynb")
+    assert "annotator pack" in out and "distinct boxes to review" in out, out[-2500:]
+    import zipfile as _zf, pandas as _pd, json as _j2
+    zp = os.path.join(WORK, "audit_for_annotators.zip")
+    names = _zf.ZipFile(zp).namelist()
+    assert any(n.startswith("sheets_A/page_") for n in names) and "verdicts_A.csv" in names and "verdicts_B.csv" in names, names
+    assert not any("key" in n or "meta" in n for n in names), "the key must not be in the annotator pack"
+    key = _pd.read_csv(os.path.join(WORK, "results", "audit", "audit_key.csv"))
+    meta = _j2.load(open(os.path.join(WORK, "results", "audit", "audit_meta.json")))
+    assert len(key) > 0, "no audit candidates in the synthetic data"
+    publish(os.path.join(WORK, "results", "audit"), "sat-audit-key")
+    vdir = os.path.join(INP, "sat-audit-verdicts"); os.makedirs(vdir, exist_ok=True)
+    va = _pd.DataFrame(dict(id=key.id, verdict=["M" if i % 3 == 0 else "N" for i in key.id]))
+    va.to_csv(os.path.join(vdir, "verdicts_A.csv"), index=False)
+    vb = va[va.id.isin(meta["ids_b"])].copy()
+    if len(vb):
+        vb.iloc[0, 1] = "U"
+        vb.iloc[len(vb) // 2:, 1] = ["N" if v != "N" else "M" for v in vb.iloc[len(vb) // 2:, 1]]   # B is not a copy of A (the integrity check)
+    va.assign(verdict="N").to_csv(os.path.join(vdir, "verdicts_C_LLM.csv"), index=False)
+    vb.to_csv(os.path.join(vdir, "verdicts_B.csv"), index=False)
+    reset_work()
+    out = run_nb("14B-blinded-audit-score-and-rescore.ipynb")
+    for t in ["T19_audit_missing_share_by_mode", "T20_audit_agreement", "T20b_audit_model_reviewer", "T21_audit_rescore", "T22_audit_boxes_added", "re-scored"]:
+        assert t in out, (t, out[-3000:])
+    for f in ["T19_audit_missing_share_by_mode.csv", "T21_audit_rescore.csv", "fig_label_audit_ap.png"]:
+        assert os.path.isfile(os.path.join(WORK, "results", "paper", f)), f
+    shutil.rmtree(os.path.join(INP, "sat-audit-key"), ignore_errors=True)
+    shutil.rmtree(vdir, ignore_errors=True)
+
     # ---- 13: simulate a Roboflow re-export of the test images with one extra box per image
     import json as _json
     gdir = os.path.join(INP, "sat-splits", "splits", "grouped")

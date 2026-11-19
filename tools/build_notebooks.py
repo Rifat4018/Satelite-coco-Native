@@ -774,6 +774,8 @@ LINKS = {
     "sat-splits": ("output of notebook 01", OWN + "sat-splits"),
     "sat-splits-sky": ("output of notebook 01b", OWN + "sat-splits-sky"),
     "sat-splits-extra": ("output of notebook 06 (optional)", OWN + "sat-splits-extra"),
+    "sat-audit-key": ("output of notebook 14A: the private key results/audit/ (audit_key.csv, audit_meta.json)", OWN + "sat-audit-key"),
+    "sat-audit-verdicts": ("the filled-in verdicts_A.csv (and verdicts_B.csv) from your annotators", OWN + "sat-audit-verdicts"),
     "skysealand-v14": ("SkySeaLand (public, Mendeley Data)", "https://data.mendeley.com/datasets/d42n3cp86p"),
     "DOTA": ("DOTA-v1.0 with labelTxt (public)", "https://www.kaggle.com/datasets/shadow4ever/dota-dataset-complete-new"),
 }
@@ -880,6 +882,192 @@ print(sorted(os.listdir(cfg.WORK_DIR)), z)
 ''')]
 
 
+NB14A = [md('''
+# SAT-14A · Blinded audit, step 1: build the review sheets  (CPU, ~5 min)
+
+**Attach:** `sat-ext` + `sat-splits` + `satelite-coco` + `sat-results-e` (the grouped YOLO11s seed-42 run **with its saved
+detections for `standard` and `sahi320`**). **Accelerator:** None. **Internet:** off. Do **not** attach the notebook-13
+relabel outputs (the audit must start from the ORIGINAL labels).
+
+Answers the meta-review: *do a blinded annotation audit across both inference modes*. This notebook pools the apparent false
+positives (conf >= 0.25, no ground-truth box with IoU >= 0.1) of **standard** and **SAHI-320**, merges boxes that are the
+same object, **shuffles** them and draws numbered crops with **no score and no mode** - the reviewer cannot tell which mode
+produced a box.
+
+After it finishes - **outputs**
+* `audit_for_annotators.zip` -> give this to the annotators (sheets for A = all boxes, sheets for B = a random 25 %,
+  two `verdicts_*.csv` with an EMPTY verdict column). **Do not give them anything else from this notebook. A and B must never
+  see each other's files or sheets.**
+* `results/audit/audit_key.csv` + `audit_meta.json` -> the PRIVATE key (which mode produced which box). Output tab -> New
+  Dataset **`sat-audit-key`**, used only by 14B.
+
+**Annotators:** open the PNG pages, and in `verdicts_A.csv` (B: `verdicts_B.csv`) write ONE letter for EVERY id (the column starts empty, and 14B refuses a file with empty rows):
+`M` = a real plane / ship / vehicle that has **no label**, `P` = the red box covers only part of a real object or covers
+several objects, `N` = nothing there / wrong, `U` = cannot decide. A and B work **independently**.
+'''), code(SHOW), code(SETUP), code('''
+utils.warn_if_gpu_wasted()
+import cv2, json, shutil, zipfile
+import blindaudit as ba, dataset as ds, analysis, report
+
+MODES = ba.AUDIT_MODES                 # ["standard", "sahi320"]
+MAX_PER_MODE = None                    # None = review EVERY apparent false positive (fair to both modes). A number = RANDOM sample per mode.
+FRAC_B = 0.25                          # share of the boxes the second annotator re-checks (for agreement)
+RUN_PREF = ["grouped__YOLO11s__s42", "grouped__YOLO11s-1024__s42", "grouped__YOLO11m__s42"]
+
+runs = {}
+for p in utils.find_files("eval_test.json"):
+    f = os.path.dirname(p)
+    if all(utils.dets_path(f, m) for m in MODES):
+        runs[utils.load_json(p)["run_id"]] = f
+RID = next((r for r in RUN_PREF if r in runs), None)
+assert RID, "no run with saved detections for %s - attach sat-results-e (grouped YOLO11s seed 42 with its results/ folder)" % MODES
+dets = {m: analysis._dets(runs[RID], m) for m in MODES}
+gt = analysis._gt_for("grouped")
+assert "corrected" not in str(gt.get("info", "")), "corrected labels are attached - remove the notebook-13 outputs (sat-results-13, sat-test-relabeled)"
+cands = ba.build_candidates(gt, dets, max_per_mode=MAX_PER_MODE)
+print(RID, "| test images:", len(gt["images"]), "| GT boxes:", len(gt["annotations"]))
+for m in MODES:
+    print(f"  apparent false positives of {m}: {int(cands['in_' + m].sum())}")
+print("distinct boxes to review:", len(cands), "| both modes:", int(cands[[f'in_{m}' for m in MODES]].all(axis=1).sum()),
+      "| pages for A:", -(-len(cands) // 20), "| ~minutes for A at 8 s/page:", round(-(-len(cands) // 20) * 8 / 60))
+'''), code('''
+info = ds.materialize("grouped")
+img_dir = info["images"]["test"]
+ids_b = ba.second_subset(cands, FRAC_B)
+out = os.path.join(cfg.WORK_DIR, "audit_for_annotators")
+shutil.rmtree(out, ignore_errors=True)
+pa = ba.make_sheets(cands, img_dir, os.path.join(out, "sheets_A"))
+pb = ba.make_sheets(cands, img_dir, os.path.join(out, "sheets_B"), ids=ids_b, order_seed=cfg.SEED + 2)   # other order
+ba.write_templates(cands, out, ids_b)
+kd = os.path.join(report.PAPER_DIR, "..", "audit")
+os.makedirs(kd, exist_ok=True)
+cands.to_csv(os.path.join(kd, "audit_key.csv"), index=False)
+utils.save_json(dict(run_id=RID, modes=MODES, seed=cfg.SEED, ids_b=ids_b, n=len(cands), max_per_mode=MAX_PER_MODE), os.path.join(kd, "audit_meta.json"))
+zp = os.path.join(cfg.WORK_DIR, "audit_for_annotators.zip")
+with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
+    for root, _, files in os.walk(out):
+        for fn in files:
+            z.write(os.path.join(root, fn), os.path.relpath(os.path.join(root, fn), out))
+shutil.rmtree(out, ignore_errors=True)
+shutil.rmtree(info["root"], ignore_errors=True)
+print("annotator pack:", zp, round(os.path.getsize(zp) / 1e6, 1), "MB | A pages:", len(pa), "| B pages:", len(pb), "| B boxes:", len(ids_b))
+print("private key  :", os.path.join(kd, "audit_key.csv"), "(do NOT send to the annotators)")
+try:
+    from IPython.display import FileLink, display
+    display(FileLink("audit_for_annotators.zip"))
+except ImportError:
+    pass
+''')]
+
+NB14B = [md('''
+# SAT-14B · Blinded audit, step 2: agreement, per-mode rates, corrected labels, re-score  (CPU, ~20-40 min)
+
+**Attach:** `sat-ext` + `sat-splits` + `satelite-coco` + **`sat-audit-key`** (14A) + **`sat-audit-verdicts`** (filled
+`verdicts_A.csv`, optional `verdicts_B.csv`, optional `verdicts_C_LLM.csv` = a model-assisted extra reviewer, reported only) + every results Dataset (`sat-results-*`, the same list as notebook 13B).
+**Accelerator:** None. Run all / Save Version. Do **not** attach the notebook-13 outputs (14 and 13 are alternatives).
+
+After it finishes - produces for the paper: **T19** missing-label share per inference mode (with 95 % CI), **T20** annotator agreement (kappa),
+**T21** AP / precision / recall / F1 of standard vs SAHI on the original, corrected and "corrected + unsure" labels,
+**T22** boxes added, **T23** every saved run re-scored, figures `fig_label_audit_examples.png` and `fig_label_audit_ap.png`.
+Output -> New Dataset **`sat-results-14`**; re-run **04, 09, 12** with it attached (they use the corrected labels).
+
+How to read it: if SAHI's AP is still below standard inference on the corrected labels, the paper's conclusion holds and is
+now backed by the audit. If the gap closes or reverses, change the claim (the abstract and Section IV-B) to what T21 shows.
+'''), code(SHOW), code(SETUP), code('''
+utils.warn_if_gpu_wasted()
+import cv2, shutil
+import blindaudit as ba, dataset as ds, analysis, report, relabel
+
+kp = utils.find_files("audit_key.csv")
+assert kp, "attach the notebook 14A output as Dataset 'sat-audit-key' (results/audit/audit_key.csv)"
+cands = pd.read_csv(kp[0])
+meta = utils.load_json(os.path.join(os.path.dirname(kp[0]), "audit_meta.json"))
+MODES, RID = meta["modes"], meta["run_id"]
+pa_, pb_, pc_ = utils.find_files("verdicts_A.csv"), utils.find_files("verdicts_B.csv"), utils.find_files("verdicts_C_LLM.csv")
+assert pa_, "attach the filled verdicts_A.csv as Dataset 'sat-audit-verdicts'"
+va = ba.read_verdicts(pa_[0], cands["id"])
+vb = ba.read_verdicts(pb_[0], cands["id"]) if pb_ else None
+vc = ba.read_verdicts(pc_[0], cands["id"]) if pc_ else None     # optional extra, model-assisted reviewer (reported only)
+print("integrity:", ba.integrity_check(va, vb))                  # stops if B was copied from A (or A from B)
+final, ag = ba.consensus(cands, va, vb)
+print("verdicts:", final.value_counts().to_dict(), "| annotator B reviewed:", 0 if vb is None else len(vb))
+os.makedirs(report.PAPER_DIR, exist_ok=True)
+report.save(ba.mode_table(cands, final, MODES), "T19_audit_missing_share_by_mode",
+            f"Blinded audit of the apparent false positives of {RID} (conf >= 0.25): what the reviewers found, per inference mode. "
+            "'only' rows: boxes produced by that mode alone. M = real but unlabelled object.")
+report.save(pd.DataFrame([dict(boxes_checked_by_both=ag["n_both"], percent_agreement=round(100 * ag["agree"], 1) if ag["n_both"] else None,
+                               kappa_4_codes=round(ag["kappa"], 2) if ag["n_both"] else None,
+                               kappa_missing_vs_rest=round(ag["kappa_missing_vs_rest"], 2) if ag["n_both"] else None)]),
+            "T20_audit_agreement", "Agreement of the two independent annotators on the doubly reviewed boxes (disagreements count as unsure).")
+if vc is not None:
+    report.save(ba.model_agreement(vc, va, vb), "T20b_audit_model_reviewer",
+                "Agreement of an additional model-assisted reviewer (verdicts_C_LLM.csv) with the human annotators. Reported only; it never changes the labels.")
+'''), code('''
+runs = {}
+for p in utils.find_files("eval_test.json"):
+    f = os.path.dirname(p)
+    if all(utils.dets_path(f, m) for m in MODES):
+        runs[utils.load_json(p)["run_id"]] = f
+assert RID in runs, f"run {RID} with saved detections is not attached"
+dets = {m: analysis._dets(runs[RID], m) for m in MODES}
+gt = analysis._gt_for("grouped")                      # ORIGINAL labels (13 / corrected splits must not be attached)
+assert "corrected" not in str(gt.get("info", "")), "corrected labels are attached - remove the notebook-13 outputs (sat-results-13, sat-test-relabeled)"
+gts = {"original": gt,
+       "corrected": ba.corrected_gt(gt, cands, final),
+       "corrected + unsure": ba.corrected_gt(gt, cands, final, include=("M", "U"))}
+t21 = ba.score_versions(gts, dets, MODES)
+report.save(t21.round(3), "T21_audit_rescore", f"{RID}: standard inference vs SAHI on the original labels, on the labels corrected with "
+            "the audited missing objects, and with the unsure boxes also added (upper case). Same images, same detections.")
+report.save(relabel.change_report(gt, gts["corrected"]), "T22_audit_boxes_added", "Ground-truth boxes per class and size before and after adding the audited missing objects.")
+info = ds.materialize("grouped")
+f1 = ba.fig_examples(cands, final, info["images"]["test"], os.path.join(report.PAPER_DIR, "fig_label_audit_examples.png"))
+f2 = ba.fig_ap(t21[t21["labels"].isin(["original", "corrected"])], os.path.join(report.PAPER_DIR, "fig_label_audit_ap.png"))
+print("figures:", f1, f2)
+shutil.rmtree(info["root"], ignore_errors=True)
+'''), code('''
+gt_new = gts["corrected"]
+relabel.write_corrected_splits(gt_new)
+t = relabel.rescore_all(gt_new)
+t.to_csv(os.path.join(report.PAPER_DIR, "T23_rescore_old_vs_new_audit.csv"), index=False)
+s = t[t["mode"].isin(["standard", "sahi480", "sahi320", "sahi160", "tta", "res1024"])]
+print(s.groupby(["model", "mode"])[["AP_old", "AP_new", "P_old", "P_new", "R_old", "R_new", "FP_old", "FP_new"]].mean().round(3).to_string())
+z = shutil.make_archive(os.path.join(cfg.WORK_DIR, "results_14"), "zip", cfg.WORK_DIR, "results")
+print(z)
+''')]
+
+
+NB15 = [md('''
+# SAT-15 · Box-fusion (WBF) time of the 3-model ensemble  (CPU, ~2 min)
+
+**Attach:** `sat-ext` + `sat-splits` + `sat-results-07a` (YOLO11s-1024) + `sat-results-07f` (YOLO26s) + `sat-results-07h` (YOLO26m).
+**Accelerator:** None. Run all.
+
+Measures the Weighted Box Fusion time per test image for the ensemble YOLO26m + YOLO11s-1024 + YOLO26s (seed 42, standard inference).
+The printed `ms per image` is the number for paper Section IV-C (fusion time); ensemble latency = single-model inference time + fusion time.
+'''), code(SHOW), code(SETUP), code('''
+import glob, time, analysis, dataset as ds
+found = sorted(glob.glob(os.path.join(INPUT_ROOT, "**", "dets_standard.json*"), recursive=True))
+print(len(found), "dets_standard files")
+WANT = [("YOLO26m", "42"), ("YOLO11s-1024", "42"), ("YOLO26s", "42")]
+def pick(name, seed):
+    hits = [f for f in found if f"__{name}__s{seed}".lower() in f.lower().replace(os.sep, "__")]
+    hits = [f for f in hits if f"__{name}__s{seed}__".lower() not in f.lower()] or hits   # no tagged variants
+    print(name, "seed", seed, "->", hits[0] if hits else "NOT FOUND"); return hits[0] if hits else None
+files = [pick(n, s) for n, s in WANT]
+assert all(files), "a model was not found: attach sat-results-07a, 07f, 07h (see the list above) and re-run"
+dets = [utils.load_any_json(f) for f in files]
+gt = utils.load_json(os.path.join(ds.find_split_dir("grouped"), "coco", "test.json"))
+print("test images:", len(gt["images"]))
+_ = analysis._wbf(dets, gt)          # warm-up
+ts = []
+for _i in range(5):
+    t0 = time.perf_counter(); analysis._wbf(dets, gt); ts.append(time.perf_counter() - t0)
+import numpy as np
+per_img = 1000 * np.array(ts) / len(gt["images"])
+print(f"WBF fusion: {per_img.mean():.2f} +/- {per_img.std():.2f} ms per image (CPU, 3 models)")
+''')]
+
+
 NOTEBOOKS = {
     "00-get-data-roboflow.ipynb": (NB00, False, True),
     "01-audit-and-splits.ipynb": (nb01k("main"), False, False),
@@ -901,6 +1089,9 @@ sat-splits-sky, satelite-coco, satelite-native, skysealand-v14, every `sat-resul
     "12-paper-figures.ipynb": (NB12, False, False),
     "13A-export-test-images-for-relabel.ipynb": (NB13A, False, False),
     "13B-rescore-on-corrected-labels.ipynb": (NB13B, False, False),
+    "14A-blinded-audit-build-sheets.ipynb": (NB14A, False, False),
+    "14B-blinded-audit-score-and-rescore.ipynb": (NB14B, False, False),
+    "15-fusion-time.ipynb": (NB15, False, False),
     **{f"{NAMES[k]}.ipynb": (nb02(k), True, True) for k in PLANS if k.startswith("07")},
     **{f"{NAMES[k]}.ipynb": (nb08(k), True, True) for k in ("08A", "08B", "08C")},
     "09-errors-mcnemar-ensembles.ipynb": (NB09, False, True),

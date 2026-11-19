@@ -1,10 +1,10 @@
 # sat_ext: When Does Slicing Help? SAHI vs. Real-Time Detectors for Small Objects in Satellite Images
 
-Code for a leakage-aware, multi-seed and statistically tested benchmark of **SAHI** (slicing aided hyper inference) against **19 real-time detector configurations** (YOLOv8 to YOLO26 and RT-DETR) for small objects (planes, ships and vehicles) in Google Earth satellite images.
+Code for a leakage-aware, multi-seed and statistically tested benchmark of **SAHI** (slicing aided hyper inference) against **20 real-time detector configurations** (YOLOv8 to YOLO26 and RT-DETR) for small objects (planes, ships and vehicles) in Google Earth satellite images.
 
 The pipeline runs as Kaggle notebooks on one T4 GPU. Training, testing, the SAHI ablations, the statistics and every paper table and figure are produced by code, not by hand.
 
-> **Main finding.** On images resized to the network input, SAHI significantly raises recall but does not improve COCO AP for any model, and it costs 5–27× more time. Higher-resolution training or a newer architecture is the better use of compute. Slicing helps only when it brings objects back to the size the model saw during training.
+> **Main finding.** On images resized to the network input, SAHI significantly raises recall but does not improve COCO AP for any model, and it costs 5–27× more time. Higher-resolution training or a newer architecture is the better use of compute. In our experiments slicing helped when it restored the object scale seen in training (as on DOTA or with tile-trained models).
 
 ---
 
@@ -32,7 +32,7 @@ The pipeline runs as Kaggle notebooks on one T4 GPU. Training, testing, the SAHI
  01  Audit: SHA-256 · perceptual hash · ORB/RANSAC overlap ──► ground areas ──► grouped (leakage-free) split
         │
         ▼
- 02 / 07  Training: 19 configurations × 3 seeds (Ultralytics, fixed recipe)
+ 02 / 07  Training: 20 configurations × 3 seeds (Ultralytics, fixed recipe)
         │
         ▼
  Inference: standard · SAHI (slice 480/320/160) · TTA · inference at 1024 · WBF ensembles
@@ -55,6 +55,8 @@ The pipeline runs as Kaggle notebooks on one T4 GPU. Training, testing, the SAHI
 ```
 sat_ext/
 ├── README.md               ← this file
+├── LICENSE                 ← MIT (code)
+├── CITATION.cff            ← how to cite (paper + dataset DOI)
 ├── requirements.txt        ← Python dependencies (pinned Ultralytics)
 ├── config.py               ← every fixed setting (paths, models, recipe, SAHI, metrics)
 ├── utils.py                ← shared helpers (I/O, seeds, GPU checks, installs)
@@ -70,6 +72,7 @@ sat_ext/
 ├── figures.py              ← 40+ paper figures from saved results
 ├── dota.py                 ← DOTA-v1.0 external test set
 ├── relabel.py              ← optional: corrected test labels → re-score
+├── blindaudit.py           ← blinded annotation audit of false positives (14A/14B)
 ├── roboflow_io.py          ← Roboflow download and release package
 ├── plans.py                ← which runs each Kaggle account trains
 ├── notebooks/              ← Kaggle notebooks (run in numeric order)
@@ -119,6 +122,7 @@ sat_ext/
 | File | What it does |
 |---|---|
 | **`relabel.py`** | *Optional* test-label correction. `export_for_relabel()` packs the 82 test images with their current boxes for Roboflow. `load_relabeled()` matches the re-exported images by file-name hash or thumbnail. `corrected_gt()` / `change_report()` build the corrected ground truth and a before/after table. `rescore_all()` **re-scores every saved detection file** on the corrected labels without retraining. |
+| **`blindaudit.py`** | Blinded audit of the false positives of standard and SAHI inference. Pools the background false positives of both modes, shuffles them, writes blank annotator sheets (`write_templates()`), reads verdicts M (real object, missing label) / P (partial or several objects) / N (not an object) / U (unsure), checks that annotators worked independently (`integrity_check()`), computes Cohen's kappa and Wilson intervals, builds the corrected test labels, and the per-mode missing-label rates. Used by notebooks 14A and 14B. |
 | **`roboflow_io.py`** | Optional Roboflow download (needs an API key), comparison of two exports, and `build_upload_package()`, which builds a cleaned dataset release with the grouped split and a dataset card (`datacard`). |
 | **`plans.py`** | Which runs each Kaggle account trains, so that no account exceeds the weekly GPU quota. Planning hours per model come from real training logs. `all_runs()` lists every planned run, `expected_run_ids()` is used to check that nothing is missing, and `show()` prints the plan. |
 | **`requirements.txt`** | `ultralytics==8.4.37`, `sahi`, `pycocotools`, `opencv-python-headless`, `scipy`, `pandas`, `matplotlib`, `roboflow` (download only). |
@@ -141,25 +145,25 @@ Every notebook first prints the attached inputs, then imports `sat_ext` from the
 
 | Notebook | Runs |
 |---|---|
-| **`02a-train-rtdetr-l-grouped-s42-s43`** | RT-DETR-L, grouped split, seeds 42, 43 |
-| **`02b-train-rtdetr-l-grouped-s44-and-orig-s42`** | RT-DETR-L seed 44 + original split seed 42 |
-| **`02c-train-yolo11m-grouped-3seeds`** | YOLO11m, 3 seeds |
-| **`02d-train-yolov8m-grouped-3seeds`** | YOLOv8m, 3 seeds |
-| **`02e-train-yolo11n-yolo11s-grouped-3seeds`** | YOLO11n and YOLO11s, 3 seeds each |
-| **`02f-train-4yolo-orig-split-s42`** | Four YOLO models on the original split (split comparison) |
-| **`02g-train-skysealand-5models-s42`** | The five original models on SkySeaLand + cross-dataset tests |
-| **`07a-train-hires-yolo11s-1024-1280-3seeds`** | YOLO11s at 1024 and 1280 px |
-| **`07b-train-hires-yolo11m-1024-3seeds`** | YOLO11m at 1024 px |
-| **`07c-train-hires-yolo11m-1280-s42-s43`** | YOLO11m at 1280 px, seeds 42, 43 |
-| **`07d-train-hires-yolo11m-1280-s44-and-yolov8s-p2`** | YOLO11m-1280 seed 44 + YOLOv8s-P2 |
-| **`07e-train-arch-yolov8s-v9s-v10s-3seeds`** | YOLOv8s, YOLOv9s, YOLOv10s |
-| **`07f-train-arch-yolo12s-yolo26s-and-yolov8m-p2`** | YOLO12s, YOLO26s, YOLOv8m-P2 |
-| **`07g-train-arch-yolov9m-v10m-3seeds`** | YOLOv9m, YOLOv10m |
-| **`07h-train-arch-yolo12m-yolo26m-3seeds`** | YOLO12m, YOLO26m |
-| **`07i-train-ablation-1copy-learning-curve`** | Data ablations: 1 augmented copy; 25% / 50% of ground areas |
-| **`07j-train-native-yolo11s-and-yolo11m-640`** | Full native frames resized to 640 |
-| **`07k-train-native-tiles-yolo11m`** | 640 px tiles cut at native resolution |
-| **`07l-train-native-yolo11m-1280`** | Full native frames at 1280 |
+| **`02A-train-rtdetr-l-grouped-s42-s43`** | RT-DETR-L, grouped split, seeds 42, 43 |
+| **`02B-train-rtdetr-l-grouped-s44-and-orig-s42`** | RT-DETR-L seed 44 + original split seed 42 |
+| **`02C-train-yolo11m-grouped-3seeds`** | YOLO11m, 3 seeds |
+| **`02D-train-yolov8m-grouped-3seeds`** | YOLOv8m, 3 seeds |
+| **`02E-train-yolo11n-yolo11s-grouped-3seeds`** | YOLO11n and YOLO11s, 3 seeds each |
+| **`02F-train-4yolo-orig-split-s42`** | Four YOLO models on the original split (split comparison) |
+| **`02G-train-skysealand-5models-s42`** | The five original models on SkySeaLand + cross-dataset tests |
+| **`07A-train-hires-yolo11s-1024-1280-3seeds`** | YOLO11s at 1024 and 1280 px |
+| **`07B-train-hires-yolo11m-1024-3seeds`** | YOLO11m at 1024 px |
+| **`07C-train-hires-yolo11m-1280-s42-s43`** | YOLO11m at 1280 px, seeds 42, 43 |
+| **`07D-train-hires-yolo11m-1280-s44-and-yolov8s-p2`** | YOLO11m-1280 seed 44 + YOLOv8s-P2 |
+| **`07E-train-arch-yolov8s-v9s-v10s-3seeds`** | YOLOv8s, YOLOv9s, YOLOv10s |
+| **`07F-train-arch-yolo12s-yolo26s-and-yolov8m-p2`** | YOLO12s, YOLO26s, YOLOv8m-P2 |
+| **`07G-train-arch-yolov9m-v10m-3seeds`** | YOLOv9m, YOLOv10m |
+| **`07H-train-arch-yolo12m-yolo26m-3seeds`** | YOLO12m, YOLO26m |
+| **`07I-train-ablation-1copy-learning-curve`** | Data ablations: 1 augmented copy; 25% / 50% of ground areas |
+| **`07J-train-native-yolo11s-and-yolo11m-640`** | Full native frames resized to 640 |
+| **`07K-train-native-tiles-yolo11m`** | 640 px tiles cut at native resolution |
+| **`07L-train-native-yolo11m-1280`** | Full native frames at 1280 |
 
 Every training run also evaluates itself on the test split (standard + SAHI-480/320/160, latency) and saves `eval_test.json`, the detections and per-image tables. Save each notebook's output as a Kaggle Dataset named `sat-results-<id>`.
 
@@ -168,10 +172,10 @@ Every training run also evaluates itself on the test split (standard + SAHI-480/
 | Notebook | What it does |
 |---|---|
 | **`03-rescore-legacy-weights`** | Re-scores the weights of the earlier manuscript correctly on the test split, and runs cross-dataset tests. |
-| **`08a-sahi-ablation-main`** / **`08a1-sahi-ablation-main`** | SAHI ablation on the main dataset: merge rule, IoU vs. IoS, confidence floor 0.01 vs. 0.25, overlap 0.1/0.3, no full-image pass. 08a1 runs the remaining models, so that each part fits the Kaggle time limit. |
-| **`08b-sahi-ablation-skysealand`** / **`08b1-sahi-ablation-skysealand`** | The same ablation on SkySeaLand (two parts). |
-| **`08c-external-test-dota`** | Zero-shot test on 300 DOTA-v1.0 validation images (standard, SAHI-640, SAHI-1024). |
-| **`08d-tta-and-inference-resolution`** | Test-time augmentation and inference at 1024 px with 640-trained weights. |
+| **`08A-sahi-ablation-main`** | SAHI ablation on the main dataset: merge rule, IoU vs. IoS, confidence floor 0.01 vs. 0.25, overlap 0.1/0.3, no full-image pass. 08a1 runs the remaining models, so that each part fits the Kaggle time limit. |
+| **`08B-sahi-ablation-skysealand`** | The same ablation on SkySeaLand. |
+| **`08C-external-test-dota`** | Zero-shot test on 300 DOTA-v1.0 validation images (standard, SAHI-640, SAHI-1024). |
+| **`08D-tta-and-inference-resolution`** | Test-time augmentation and inference at 1024 px with 640-trained weights. |
 
 ### Stage 4: analysis, tables and figures (CPU)
 
@@ -183,6 +187,9 @@ Every training run also evaluates itself on the test split (standard + SAHI-480/
 | **`11-label-quality-check`** | Shows the highest-confidence false positives as crop sheets (`fp_review.zip`) so that missing labels can be checked by eye. |
 | **`12-paper-figures`** | Generates the 40+ figures in `figures.py` from the saved results. |
 | **`05-roboflow-export`** | Builds the cleaned dataset release (640 px or native) with the grouped split and a dataset card. |
+| **`13A-export-test-images-for-relabel`** / **`13B-rescore-on-corrected-labels`** | Export the 82 test images for relabelling in Roboflow, then re-score every saved prediction on the corrected labels. |
+| **`14A-blinded-audit-build-sheets`** / **`14B-blinded-audit-score-and-rescore`** | Blinded annotation audit (alternative to 13): 14A writes the shuffled annotator sheets and a private key; 14B computes agreement, missing-label rates per inference mode, corrected labels and the re-score. |
+| **`15-fusion-time`** | Measures Weighted Box Fusion time per image for the three-model ensemble (CPU). |
 
 ---
 
@@ -202,6 +209,7 @@ Every training run also evaluates itself on the test split (standard + SAHI-480/
 |---|---|
 | **`tools/build_notebooks.py`** | Generates all notebooks in `notebooks/` from one script, so their setup cells stay identical. Edit this file, not the `.ipynb` files. |
 | **`tools/smoke_test.py`** | **End-to-end test on CPU** in a few minutes: builds a synthetic dataset, then runs every notebook in order with fake Ultralytics/SAHI, imitating Kaggle behaviour such as Datasets being un-gzipped. It checks the outputs of each stage. |
+| **`tools/test_blindaudit.py`** | Tests of the blinded-audit code: kappa, copied-file detection, consensus rules. |
 | **`tools/test_metrics.py`** | Unit tests for the internal COCO evaluator (same algorithm as pycocotools) and the TP/FP matcher in `metrics.py`. |
 | **`tools/make_synthetic.py`** | Creates a fake Roboflow-style COCO export for the smoke test, with **planted problems** that the audit must find: augmented copies with rotations, a test tile overlapping a training tile (ORB), a mirrored copy under a new name (pHash), a shared source name (source id), and broken boxes (negative coordinates, boxes beyond the border, exact duplicates). |
 | **`tools/fakes/ultralytics/`**, **`tools/fakes/sahi/`** | Lightweight stand-ins for Ultralytics and SAHI with the same interfaces, so the pipeline can be tested without a GPU or downloads. |
@@ -243,12 +251,13 @@ Key metrics in `eval_test.json`: COCO AP, AP50, AP75, AP/AR per size bucket and 
 |---|---|---|
 | Dataset version | Purpose | Link |
 |---|---|---|
+| **Satellite dataset, public archive** (native, 640 px, grouped split files; CC BY 4.0 annotations) | All released data | Zenodo: https://doi.org/10.5281/zenodo.24294928 |
 | Satellite dataset (this study), 640 px COCO export | Main experiments | [Roboflow Dataset v2](https://app.roboflow.com/rifat4018/aerial-object-detection-u3f5u/2) |
 | Satellite dataset (this study), native resolution | Native-frame experiments (07J–07L) | [Roboflow Dataset v3](https://app.roboflow.com/rifat4018/aerial-object-detection-u3f5u/3) |
 | **SkySeaLand** (airplane, boat, car, ship → plane, ship, vehicle; CC BY 4.0) | second dataset | Mendeley Data: https://data.mendeley.com/datasets/d42n3cp86p/3 · Roboflow Universe: `aquantic-research/skysealand-tf38k` |
 | **DOTA-v1.0** (oriented boxes → axis-aligned) | zero-shot external test (300 val images) | https://captain-whu.github.io/DOTA/ |
 
-The satellite dataset contains 544 Google Earth frames with 18,872 boxes (plane, ship, vehicle). Google Earth imagery is subject to Google's terms of use.
+The 640 px dataset used in the paper comes from 544 Google Earth frames with 18,872 cleaned boxes (plane, ship, vehicle); the native-resolution export has 536 of these frames. Google Earth imagery is subject to Google's terms of use, so the Zenodo record is the reference copy. Google Earth imagery is subject to Google's terms of use.
 
 ---
 
@@ -265,8 +274,8 @@ pip install -r requirements.txt
 
 ## 11. Citation and licence
 
-Code: https://github.com/Rifat4018/Satelite-coco-Native
+Code: https://github.com/Rifat4018/Satelite-coco-Native · Dataset: https://doi.org/10.5281/zenodo.24294928
 
-If you use this code or dataset, please cite the accompanying paper (citation will be added after publication).
+**Code licence:** MIT (see `LICENSE`). Detector training and inference use Ultralytics (AGPL-3.0) and SAHI (MIT); check their terms if you redistribute models or services built on them. The annotations are released under CC BY 4.0. The Google Earth imagery remains subject to Google's terms of use; SkySeaLand and DOTA-v1.0 keep their own licences.
 
-Code: add your licence here (e.g. MIT). Google Earth imagery is subject to Google's terms of use and is not redistributed here.
+**Cite as:** M. R. H. Rifat, A. K. Ghosh, M. S. H. Mamun, S. T. Lamia, A. Islam, M. A. Quader, F. J. Ayrin, M. M. Rahman, N. A. Nasir and M. T. Reza, "Benchmarking Sliced Inference for Small-Object Detection in Satellite Images," ICREST 2027. See `CITATION.cff` (GitHub shows a "Cite this repository" button) and the dataset DOI above.

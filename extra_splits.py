@@ -130,7 +130,10 @@ def build_all(out_root=None, which=("main", "native")):
             for sp in ("val", "test"):
                 a = utils.load_json(os.path.join(sdir, "coco", f"{sp}.json"))
                 b = utils.load_json(os.path.join(out_root, name, "coco", f"{sp}.json"))
-                assert a["images"] == b["images"] and len(a["annotations"]) == len(b["annotations"]), (name, sp)
+                assert a["images"] == b["images"], (name, sp)
+                # a relabelled base (label_version 2, notebook 14B) has extra boxes by design; images must still match
+                if int(meta.get("label_version", 1)) == 1:
+                    assert len(a["annotations"]) == len(b["annotations"]), (name, sp)
         print("val/test identical to 'grouped' in every ablation split: OK")
         made += MAIN_EXTRA
     if "native" in which:
