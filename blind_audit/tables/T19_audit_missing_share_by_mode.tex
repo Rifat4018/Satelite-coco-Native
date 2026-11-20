@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Blinded audit of the apparent false positives of grouped__YOLO11s__s42 (conf >= 0.25): what the reviewers found, per inference mode. 'only' rows: boxes produced by that mode alone. M = real but unlabelled object.}
+\label{tab:T19_audit_missing_share_by_mode}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llrrrrrr}
+\toprule
+mode & apparent\_FP & missing\_label & partial\_box & true\_FP & unsure & missing\_share & ci95 \\
+\midrule
+standard & 402 & 87 & 50 & 30 & 235 & 22\% & [18, 26]\% \\
+sahi320 & 925 & 298 & 137 & 84 & 406 & 32\% & [29, 35]\% \\
+standard only & 6 & 1 & 0 & 0 & 5 & 17\% & [3, 56]\% \\
+sahi320 only & 529 & 212 & 87 & 54 & 176 & 40\% & [36, 44]\% \\
+\bottomrule
+\end{tabular}}
+\end{table}

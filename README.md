@@ -145,25 +145,25 @@ Every notebook first prints the attached inputs, then imports `sat_ext` from the
 
 | Notebook | Runs |
 |---|---|
-| **`02A-train-rtdetr-l-grouped-s42-s43`** | RT-DETR-L, grouped split, seeds 42, 43 |
-| **`02B-train-rtdetr-l-grouped-s44-and-orig-s42`** | RT-DETR-L seed 44 + original split seed 42 |
-| **`02C-train-yolo11m-grouped-3seeds`** | YOLO11m, 3 seeds |
-| **`02D-train-yolov8m-grouped-3seeds`** | YOLOv8m, 3 seeds |
-| **`02E-train-yolo11n-yolo11s-grouped-3seeds`** | YOLO11n and YOLO11s, 3 seeds each |
-| **`02F-train-4yolo-orig-split-s42`** | Four YOLO models on the original split (split comparison) |
-| **`02G-train-skysealand-5models-s42`** | The five original models on SkySeaLand + cross-dataset tests |
-| **`07A-train-hires-yolo11s-1024-1280-3seeds`** | YOLO11s at 1024 and 1280 px |
-| **`07B-train-hires-yolo11m-1024-3seeds`** | YOLO11m at 1024 px |
-| **`07C-train-hires-yolo11m-1280-s42-s43`** | YOLO11m at 1280 px, seeds 42, 43 |
-| **`07D-train-hires-yolo11m-1280-s44-and-yolov8s-p2`** | YOLO11m-1280 seed 44 + YOLOv8s-P2 |
-| **`07E-train-arch-yolov8s-v9s-v10s-3seeds`** | YOLOv8s, YOLOv9s, YOLOv10s |
-| **`07F-train-arch-yolo12s-yolo26s-and-yolov8m-p2`** | YOLO12s, YOLO26s, YOLOv8m-P2 |
-| **`07G-train-arch-yolov9m-v10m-3seeds`** | YOLOv9m, YOLOv10m |
-| **`07H-train-arch-yolo12m-yolo26m-3seeds`** | YOLO12m, YOLO26m |
-| **`07I-train-ablation-1copy-learning-curve`** | Data ablations: 1 augmented copy; 25% / 50% of ground areas |
-| **`07J-train-native-yolo11s-and-yolo11m-640`** | Full native frames resized to 640 |
-| **`07K-train-native-tiles-yolo11m`** | 640 px tiles cut at native resolution |
-| **`07L-train-native-yolo11m-1280`** | Full native frames at 1280 |
+| **`02a-train-rtdetr-l-grouped-s42-s43`** | RT-DETR-L, grouped split, seeds 42, 43 |
+| **`02b-train-rtdetr-l-grouped-s44-and-orig-s42`** | RT-DETR-L seed 44 + original split seed 42 |
+| **`02c-train-yolo11m-grouped-3seeds`** | YOLO11m, 3 seeds |
+| **`02d-train-yolov8m-grouped-3seeds`** | YOLOv8m, 3 seeds |
+| **`02e-train-yolo11n-yolo11s-grouped-3seeds`** | YOLO11n and YOLO11s, 3 seeds each |
+| **`02f-train-4yolo-orig-split-s42`** | Four YOLO models on the original split (split comparison) |
+| **`02g-train-skysealand-5models-s42`** | The five original models on SkySeaLand + cross-dataset tests |
+| **`07a-train-hires-yolo11s-1024-1280-3seeds`** | YOLO11s at 1024 and 1280 px |
+| **`07b-train-hires-yolo11m-1024-3seeds`** | YOLO11m at 1024 px |
+| **`07c-train-hires-yolo11m-1280-s42-s43`** | YOLO11m at 1280 px, seeds 42, 43 |
+| **`07d-train-hires-yolo11m-1280-s44-and-yolov8s-p2`** | YOLO11m-1280 seed 44 + YOLOv8s-P2 |
+| **`07e-train-arch-yolov8s-v9s-v10s-3seeds`** | YOLOv8s, YOLOv9s, YOLOv10s |
+| **`07f-train-arch-yolo12s-yolo26s-and-yolov8m-p2`** | YOLO12s, YOLO26s, YOLOv8m-P2 |
+| **`07g-train-arch-yolov9m-v10m-3seeds`** | YOLOv9m, YOLOv10m |
+| **`07h-train-arch-yolo12m-yolo26m-3seeds`** | YOLO12m, YOLO26m |
+| **`07i-train-ablation-1copy-learning-curve`** | Data ablations: 1 augmented copy; 25% / 50% of ground areas |
+| **`07j-train-native-yolo11s-and-yolo11m-640`** | Full native frames resized to 640 |
+| **`07k-train-native-tiles-yolo11m`** | 640 px tiles cut at native resolution |
+| **`07l-train-native-yolo11m-1280`** | Full native frames at 1280 |
 
 Every training run also evaluates itself on the test split (standard + SAHI-480/320/160, latency) and saves `eval_test.json`, the detections and per-image tables. Save each notebook's output as a Kaggle Dataset named `sat-results-<id>`.
 
@@ -172,10 +172,10 @@ Every training run also evaluates itself on the test split (standard + SAHI-480/
 | Notebook | What it does |
 |---|---|
 | **`03-rescore-legacy-weights`** | Re-scores the weights of the earlier manuscript correctly on the test split, and runs cross-dataset tests. |
-| **`08A-sahi-ablation-main`** | SAHI ablation on the main dataset: merge rule, IoU vs. IoS, confidence floor 0.01 vs. 0.25, overlap 0.1/0.3, no full-image pass. 08a1 runs the remaining models, so that each part fits the Kaggle time limit. |
-| **`08B-sahi-ablation-skysealand`** | The same ablation on SkySeaLand. |
-| **`08C-external-test-dota`** | Zero-shot test on 300 DOTA-v1.0 validation images (standard, SAHI-640, SAHI-1024). |
-| **`08D-tta-and-inference-resolution`** | Test-time augmentation and inference at 1024 px with 640-trained weights. |
+| **`08a-sahi-ablation-main`** / **`08a1-sahi-ablation-main`** | SAHI ablation on the main dataset: merge rule, IoU vs. IoS, confidence floor 0.01 vs. 0.25, overlap 0.1/0.3, no full-image pass. 08a1 runs the remaining models, so that each part fits the Kaggle time limit. |
+| **`08b-sahi-ablation-skysealand`** / **`08b1-sahi-ablation-skysealand`** | The same ablation on SkySeaLand. |
+| **`08c-external-test-dota`** | Zero-shot test on 300 DOTA-v1.0 validation images (standard, SAHI-640, SAHI-1024). |
+| **`08d-tta-and-inference-resolution`** | Test-time augmentation and inference at 1024 px with 640-trained weights. |
 
 ### Stage 4: analysis, tables and figures (CPU)
 
@@ -188,10 +188,12 @@ Every training run also evaluates itself on the test split (standard + SAHI-480/
 | **`12-paper-figures`** | Generates the 40+ figures in `figures.py` from the saved results. |
 | **`05-roboflow-export`** | Builds the cleaned dataset release (640 px or native) with the grouped split and a dataset card. |
 | **`13A-export-test-images-for-relabel`** / **`13B-rescore-on-corrected-labels`** | Export the 82 test images for relabelling in Roboflow, then re-score every saved prediction on the corrected labels. |
-| **`14A-blinded-audit-build-sheets`** / **`14B-blinded-audit-score-and-rescore`** | Blinded annotation audit (alternative to 13): 14A writes the shuffled annotator sheets and a private key; 14B computes agreement, missing-label rates per inference mode, corrected labels and the re-score. |
+| **`14a-blinded-audit-build-sheets`** / **`14b-blinded-audit-score-and-rescore`** | Blinded annotation audit (alternative to 13): 14A writes the shuffled annotator sheets and a private key; 14B computes agreement, missing-label rates per inference mode, corrected labels and the re-score. |
 | **`15-fusion-time`** | Measures Weighted Box Fusion time per image for the three-model ensemble (CPU). |
 
 ---
+
+> **Executed notebooks.** The files in `notebooks/` are the notebooks as run on Kaggle for the paper, with their outputs (`13a`/`13b` and `00` were not run for the paper). The blinded-audit files, verdicts and result tables are in `blind_audit/` (see `blind_audit/README.md`).
 
 ## 5. Planning documents
 
@@ -237,7 +239,7 @@ python tools/smoke_test.py       # full pipeline on CPU with fakes
 | Location | Contents |
 |---|---|
 | `splits/<name>/` | Split manifest (`manifest.csv` with ground-area id), COCO ground truth per split, fingerprint |
-| `audit/` | Audit tables, duplicate/overlap pair montages, size figures, `clean_log.csv` |
+| `audit/` (Kaggle output) | Audit tables, duplicate/overlap pair montages, size figures, `clean_log.csv` |
 | `results/<run_id>/` | `eval_test.json` (all metrics per mode), detections (`dets_<mode>.json.gz`), per-image CSVs, training log |
 | `results/paper/` | Paper tables `T1`–`T15`, `D1`–`D4` (CSV + LaTeX), `all_runs_long.csv` (every run × mode), figures |
 

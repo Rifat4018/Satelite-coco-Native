@@ -1,0 +1,14 @@
+cls,size,before,after,added
+plane,large,27,32,5
+plane,medium,170,172,2
+plane,micro,36,37,1
+plane,tiny16_32,200,206,6
+ship,large,27,54,27
+ship,medium,105,128,23
+ship,micro,14,15,1
+ship,tiny16_32,64,66,2
+vehicle,large,13,13,0
+vehicle,medium,263,411,148
+vehicle,micro,834,858,24
+vehicle,tiny16_32,982,1042,60
+all,all,2735,3034,299
